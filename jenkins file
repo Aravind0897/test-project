@@ -1,0 +1,39 @@
+pipeline {
+    agent any
+    stages {
+        stage('Pull Code From GitHub') {
+            steps {
+                git 'https://github.com/Aravind0897/test-project.git'
+            }
+        }
+        stage('Build the Docker image') {
+            steps {
+                sh 'sudo docker build -t projectimage /var/lib/jenkins/workspace/test-project'
+                sh 'sudo docker tag projectimage aravindhan97/projectimage:latest'
+                sh 'sudo docker tag projectimage aravindhan97/projectimage:${BUILD_NUMBER}'
+            }
+        }
+        stage('Push the Docker image') {
+            steps {
+                sh 'sudo docker image push aravindhan97/projectimage:latest'
+                sh 'sudo docker image push aravindhan97/projectimage:${BUILD_NUMBER}'
+            }
+        }
+        stage('Trivy Scan') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"
+            }
+        }
+        stage("TRIVY"){
+            steps{
+                sh "trivy image aravindhan97/projectimage:latest > trivyimage.txt" 
+            }
+        }
+   stage('Deploy on Kubernetes') {
+            steps {
+                sh 'sudo kubectl apply -f /var/lib/jenkins/workspace/test-project/pod.yaml'
+                sh 'sudo kubectl rollout restart deployment loadbalancer-pod'
+            }
+        }
+    }
+}
